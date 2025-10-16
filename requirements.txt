@@ -5,5 +5,3 @@ httpx
 requests
 python-dotenv
 openai
-subprocess
-datetime

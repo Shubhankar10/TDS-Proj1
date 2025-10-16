@@ -1,3 +1,6 @@
-pandas
-numpy
 fastapi
+uvicorn
+pydantic
+httpx
+requests
+python-dotenv

@@ -19,7 +19,6 @@ app = FastAPI(title="Student App Builder Pipeline")
 EXPECTED_SECRET = "Jo1010"
 EVAL_POST_TIMEOUT_SECONDS = 10 * 60  # 10 minutes
 
-PERSONAL_ACCESS_TOKEN = "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" 
 GITHUB_USERNAME = "Shubhankar10"
 TASK_NAME = "TDS_try2"
 # ----------------

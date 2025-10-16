@@ -11,16 +11,26 @@ import requests
 import os
 import subprocess
 import asyncio
-from llm import ask_llm
+from llm import initialize_llm_client, ask_llm
 
-app = FastAPI(title="Student App Builder Pipeline")
+import subprocess
+import datetime
+
+import os
+import base64
+from typing import List
+import re
+
+from dotenv import load_dotenv  
+import os
+load_dotenv()
 
 # ---- CONFIG ----
 EXPECTED_SECRET = "Jo1010"
-EVAL_POST_TIMEOUT_SECONDS = 10 * 60  # 10 minutes
+EVAL_POST_TIMEOUT_SECONDS = 10 * 60 
+GITHUB_USERNAME = os.getenv("GITHUB_USERNAME")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
-GITHUB_USERNAME = "Shubhankar10"
-TASK_NAME = "TDS_try2"
 # ----------------
 
 # ---- Pydantic models ----
@@ -44,205 +54,71 @@ class AckResponse(BaseModel):
     task: str
     round: int
 
-class EvalResponse(BaseModel):
-    """
-    {
-  // Copy these from the request
-  "email": "...",
-  "task": "captcha-solver-...",
-  "round": 1,
-  "nonce": "ab12-...",
-  // Send these based on your GitHub repo and commit
-  "repo_url": "https://github.com/user/repo",
-  "commit_sha": "abc123",
-  "pages_url": "https://user.github.io/repo/",
-}
-    """
+class EvalPayload(BaseModel):
+    email: str
+    task: str
+    round: int
+    nonce: str
+    repo_url: str
+    commit_sha: str
+    pages_url: str
 
 # ---- Helper functions ----
 
-def extract_data_uri(data_uri: str):
-    """
-    Parse data URI of form: data:<mime>;base64,<data>
-    returns: (mime, bytes)
-    """
-    if not data_uri.startswith("data:"):
-        raise ValueError("Not a data URI")
-    header, b64 = data_uri.split(",", 1)
-    # header like: data:image/png;base64
-    parts = header.split(";")
-    mime = parts[0][5:] if parts[0].startswith("data:") else "application/octet-stream"
-    if "base64" not in header:
-        raise ValueError("Only base64-encoded data URIs supported")
-    return mime, base64.b64decode(b64)
 
-def save_attachments_to_temp(attachments: List[Attachment]) -> List[str]:
+def extract_data_uri(data_uri: str) -> tuple[str, bytes]:
+    """Extract MIME type and raw bytes from a data URI."""
+    header, encoded = data_uri.split(",", 1)
+    mime = header.split(";")[0].replace("data:", "")
+    data = base64.b64decode(encoded)
+    return mime, data
+
+def save_attachments_to_repo(attachments: List) -> List[str]:
     """
-    Save attachments to temp files. Return list of file paths.
+    Save attachments (Attachment objects) inside the repo folder under 'attachments' subfolder.
+    Returns list of file paths relative to the repo.
     """
-    saved = []
+    saved_paths = []
+
+    attachments_dir = "attachments"
+    os.makedirs(attachments_dir, exist_ok=True)
+
     for att in attachments:
+        # Extract MIME and data
         mime, data = extract_data_uri(att.url)
-        suffix = ""
-        if "/" in mime:
-            suffix = "." + mime.split("/")[-1]
-        tf = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        tf.write(data)
-        tf.flush()
-        tf.close()
-        saved.append(tf.name)
-    return saved
 
-# ---- Github Funcitons ----
+        # Determine filename and extension
+        file_name = att.name
+        if "." not in file_name and "/" in mime:
+            file_name += "." + mime.split("/")[-1]
 
-def initialize_github(token, username):
-    """
-    Authenticates GitHub CLI with a personal access token.
-    """
-    os.environ["GH_TOKEN"] = token
-    os.environ["GITHUB_USERNAME"] = username
-    # Authenticate GH CLI
-    # subprocess.run(["gh", "auth", "login", "--with-token"], input=f"{token}\n", text=True, check=True)
-    print("[GITHUB] GitHub CLI authenticated successfully.")
+        file_path = os.path.join(attachments_dir, file_name)
 
-def create_repo(task_name):
-    """
-    Creates a public GitHub repo with a unique name based on task_name.
-    """
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    repo_name = f"{task_name}-{timestamp}"
-    subprocess.run(["gh", "repo", "create", repo_name, "--public", "--confirm"], check=True)
-    print(f"[GITHUB] Repository '{repo_name}' created successfully.")
-    return repo_name
+        with open(file_path, "wb") as f:
+            f.write(data)
 
-def setup_local_repo(repo_name, username,code=""):
-    """
-    Initializes local git repo, adds MIT LICENSE and README, and pushes code.
-    """
-    os.makedirs(repo_name, exist_ok=True)
-    os.chdir(repo_name)
-    print("[GITHUB] Repo Local Made")
-    
-    # Initialize git
-    subprocess.run(["git", "init"], check=True)
-    
-    # Add MIT LICENSE
-    mit_license_text = """MIT License
+        saved_paths.append(file_path)
 
-    Copyright (c) 2025
+        # Recursively save nested attachments if present
+        nested_attachments = getattr(att, "attachments", None)
+        if nested_attachments:
+            nested_paths = save_attachments_to_repo(
+                nested_attachments,
+                repo_name,
+                parent_folder=os.path.join(parent_folder, file_name + "_nested")
+            )
+            saved_paths.extend(nested_paths)
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction..."""
-    with open("LICENSE", "w") as f:
-        f.write(mit_license_text)
-    
-    
-    print("[GITHUB] MIT Added")
-    # Add README.md
-    readme_text = f"""
-    # {repo_name}
+    print(f"[Attachments] Saved {len(saved_paths)} files in {attachments_dir}")
+    return saved_paths
 
-    ## Summary
-    This repository was created programmatically using Python and GitHub CLI.
-
-    """
-    
-    with open("README.md", "w") as f:
-        f.write(readme_text)
-
-    print("[GITHUB] README Added")
-
-    # Add index.html if code is provided
-    if code:
-        with open("index.html", "w", encoding="utf-8") as f:
-            f.write(code)
-    print("[GITHUB] Code Added.")
-
-
-    # Commit and push
-    subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Initial commit with README and LICENSE"], check=True)
-    subprocess.run(["git", "branch", "-M", "main"], check=True)
-    subprocess.run(["git", "remote", "add", "origin", f"https://github.com/{username}/{repo_name}.git"], check=True)
-    subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
-    print("[GITHUB] Code pushed successfully.")
-
-def enable_github_pages_api(repo_name, username, token):
-    """
-    Enable GitHub Pages on the main branch via GitHub API.
-    """
-    import requests
-    import time
-    print("[GITHUB] Pages")
-
-    url = f"https://api.github.com/repos/{username}/{repo_name}/pages"
-    headers = {
-        "Authorization": f"token {token}",
-        "Accept": "application/vnd.github+json"
-    }
-    data = {
-        "source": {
-            "branch": "main",
-            "path": "/"   # Serve from root
-        }
-    }
-
-    # Try enabling Pages; API may take a moment to process
-    response = requests.post(url, json=data, headers=headers)
-    
-    # If the site already exists, POST returns 422; try PATCH instead
-    if response.status_code == 201:
-        print(f"GitHub Pages enabled for https://{username}.github.io/{repo_name}/")
-    elif response.status_code == 204 or response.status_code == 422:
-        # PATCH to update or confirm settings
-        response = requests.patch(url, json=data, headers=headers)
-        if response.status_code in [200, 201, 204]:
-            print(f"GitHub Pages enabled for https://{username}.github.io/{repo_name}/")
-        else:
-            print(f"Failed to enable GitHub Pages: {response.status_code} {response.text}")
-    else:
-        print(f"Failed to enable GitHub Pages: {response.status_code} {response.text}")
-
-    # Wait a few seconds for the site to be deployed
-    print("[GITHUB] Wait to Publish.")
-    time.sleep(10)
-    page_url = f"https://{username}.github.io/{repo_name}/"
-    print(f"[GITHUB] Check your site at: {page_url}")
-
-
-
-
-def create_github_project(task_name,code):
-    token = PERSONAL_ACCESS_TOKEN
-    username = GITHUB_USERNAME
-    print("Initialize")
-    initialize_github(token, username)
-    print('Create Repo')
-    repo_name = create_repo(task_name)
-
-    print("Setup")
-    setup_local_repo(repo_name, username, code=code)
-
-    print('Pages')
-    enable_github_pages_api(repo_name, username, token)
-    print(f"Project '{repo_name}' setup complete!")
-
-    repo_url = f"https://github.com/{username}/{repo_name}"
-    pages_url = f"https://{username}.github.io/{repo_name}/"
-
-    return {"repo_url": repo_url, "commit_sha": "commit_sha", "pages_url": pages_url}
-
-# ---- LLM Functions ----
-
-
+def extract_html_block(code: str) -> str:
+    match = re.search(r"(<html.*?>.*?</html>)", code, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return ""
 
 def post_evaluation_with_retries(evaluation_url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Post payload (JSON) to evaluation_url using exponential backoff (sync version).
-    Keep retrying until either we get HTTP 200 or we surpass EVAL_POST_TIMEOUT_SECONDS.
-    Backoff delays: 1,2,4,8... up to 32 sec, but total time must be <= 10 minutes.
-    """
     start = time.monotonic()
     attempt = 0
     base_delay = 1.0
@@ -283,30 +159,140 @@ def post_evaluation_with_retries(evaluation_url: str, payload: Dict[str, Any]) -
                     }
                 delay = min(max_delay, base_delay * (2 ** (attempt - 1)))
                 time.sleep(delay)
+    return "Posted"
 
 
-# ---- Core background pipeline ----
-def pipeline(payload: RequestPayload):
-    """
-    This function runs asynchronously after immediate 200 ack.
-    It:
-      - saves attachments,
-      - creates repo name,
-      - calls create_and_publish_repo_stub (replace with your real function),
-      - composes evaluation JSON and posts to evaluation_url with retries.
-    """
-    
-    print(f"[pipeline] started for task={payload.task} round={payload.round}")
+# ---- Github Funcitons ----
 
-    saved_files = []
+def initialize_github(token, username):
+    print("[Github : init]")
+    os.environ["GH_TOKEN"] = token
+    os.environ["GITHUB_USERNAME"] = username
+    # Authenticate GH CLI
+    # subprocess.run(["gh", "auth", "login", "--with-token"], input=f"{token}\n", text=True, check=True)
+    print("[GITHUB : init] GitHub CLI authenticated successfully.")
+
+def create_repo(task_name):
+    print("[Github : create repo]")
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    repo_name = f"{task_name}-{timestamp}"
+
     try:
-        if payload.attachments:
-            saved_files = save_attachments_to_temp(payload.attachments)
-            print("[pipeline] saved attachments:", saved_files)
-    except Exception as e:
-        print("[pipeline] failed to save attachments:", e)
+        # Create repo (authenticated via gh auth login)
+        subprocess.run(
+            ["gh", "repo", "create", repo_name, "--public", "--confirm"],
+            check=True
+        )
+
+        print(f"[GITHUB : create repo] Repository '{repo_name}' created successfully.")
+        return repo_name
+
+    except subprocess.CalledProcessError as e:
+        print(f"[pipeline] repo creation failed: {e}")
+        raise
+
+def setup_local_repo(repo_name, username,code=""):
+    print("[Github : local setup]")
+    os.makedirs(repo_name, exist_ok=True)
+    os.chdir(repo_name)
+    print("[GITHUB : local setup] Repo Local Made")
+    
+    # Initialize git
+    subprocess.run(["git", "init"], check=True)
+    
+    # Add MIT LICENSE
+    mit_license_text = """MIT License
+
+    Copyright (c) 2025
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction."""
+
+    with open("LICENSE", "w") as f:
+        f.write(mit_license_text)
+    
+    
+    print("[GITHUB : local setup] MIT Added")
+    
+    # Commit and push
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "Initial commit with LICENSE"], check=True)
+    subprocess.run(["git", "branch", "-M", "main"], check=True)
+    subprocess.run(["git", "remote", "add", "origin", f"https://github.com/{username}/{repo_name}.git"], check=True)
+    subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
+    print("[GITHUB : local setup] Setup successfully.")
+
+def enable_github_pages_api(repo_name, username, token):
+    import requests
+    import time
+    print("[Github] Pages")
+
+    url = f"https://api.github.com/repos/{username}/{repo_name}/pages"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json"
+    }
+    data = {
+        "source": {
+            "branch": "main",
+            "path": "/"   # Serve from root
+        }
+    }
+
+    # Try enabling Pages; API may take a moment to process
+    response = requests.post(url, json=data, headers=headers)
+    
+    # If the site already exists, POST returns 422; try PATCH instead
+    if response.status_code == 201:
+        print(f"GitHub Pages enabled for https://{username}.github.io/{repo_name}/")
+    elif response.status_code == 204 or response.status_code == 422:
+        # PATCH to update or confirm settings
+        response = requests.patch(url, json=data, headers=headers)
+        if response.status_code in [200, 201, 204]:
+            print(f"GitHub Pages enabled for https://{username}.github.io/{repo_name}/")
+        else:
+            print(f"Failed to enable GitHub Pages: {response.status_code} {response.text}")
+    else:
+        print(f"Failed to enable GitHub Pages: {response.status_code} {response.text}")
+
+    # Wait a few seconds for the site to be deployed
+    print("[GITHUB] Wait to Publish.")
+    time.sleep(10)
+    page_url = f"https://{username}.github.io/{repo_name}/"
+    print(f"[GITHUB] Check your site at: {page_url}")
+
+    return 
 
 
+# ---- Pipeline Fucnitons ----
+
+
+
+def round_2_pipeline(payload: RequestPayload):
+    print("Hi")
+    return
+
+def round_1_pipeline(payload: RequestPayload):
+    print("\n[Round1 Pipeline] Initializing GitHub")
+    token = GITHUB_TOKEN
+    username = GITHUB_USERNAME
+    initialize_github(token, username)
+
+    print("\n[Round1 Pipeline] Creating repository")
+    # repo_name = "Talk"
+    repo_name = create_repo(payload.task)
+
+    print("\n[Round1 Pipeline] Setup Local repository")
+    setup_local_repo(repo_name, username, code="")
+
+    print("\n[Round1 Pipeline] Downloading attachments")
+    attachments_paths = save_attachments_to_repo(payload.attachments)
+
+    print("\n[Round1 Pipeline] Calling LLM to generate code with attachments")
+
+    
+    
     prompt = f"""
     You are an expert web developer. Using the task description {payload.task} and brief {payload.brief}, 
     generate a **single clean code block** that performs this task. 
@@ -315,102 +301,85 @@ def pipeline(payload: RequestPayload):
     - Do not include any introductory or trailing messages, explanations, or comments unrelated to the code.
     - Keep the code simple, readable, and self-contained.
     - Make sure to have these checks in the code : {payload.checks}
+    - Use the following attachments as needed, These are the paths to be used: {attachments_paths}.
     """
-    
-    # - Use the following attachments as needed: {', '.join(payload.attachments) if payload.attachments else 'None'}.
 
-    import re
-
-    def extract_html_block(code: str) -> str:
-        match = re.search(r"(<html.*?>.*?</html>)", code, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1)
-        return ""
-
-    # Example usage
-    print("[pipeline] Called LLM")
     code = ask_llm(prompt)
     html_only = extract_html_block(code)
-    print(html_only)
+    # html_only = " "
+    print("\t[Round1] Code Generated.")
+
+    
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html_only)
+    print("\t[Round1] Code Added.")
 
 
-    # Call LLM here 
 
-    html_code = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>My Sample Page</title>
-    </head>
-    <body>
-        <h1>Hello, GitHub PagesFrom Pipeline!</h1>
-        <p>This page was generated automatically.</p>
-    </body>
-    </html>
+    
+    readme_prompt = f"""
+    You are an README maker for GITHUB. Using the task description {payload.task} and brief {payload.brief}, 
+    generate a **single clean block** that contains the README for this repo : {repo_name}, 
+    Here is the code for the task : {html_only}
+
+    - Do not include any introductory or trailing messages, explanations, or comments unrelated to the file.
+    - Write a complete README.md under these headings : summary, setup, usage, code explanation.
     """
+    
+    readme_text = ask_llm(readme_prompt)
+    # readme_text = ""
+    print("\t[Round1]  README Generated")
+    
+    with open("README.md", "w") as f:
+        f.write(readme_text)
 
-    try:
-        repo_info = create_github_project(payload.task, html_only)
-    except Exception as e:
-        print("[pipeline] repo creation failed:", e)
-        repo_info = {"repo_url": "", "commit_sha": "", "pages_url": ""}
+    print("\t[Round1] README Added")
+
+
+    
+
+    print("\n[Round1 Pipeline] Pushing code to GitHub")
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", "Add index.html and README for Round1"], check=True)
+    subprocess.run(["git", "push", "origin", "main"], check=True)
+    print("\t[Round1] Code and Attachments Pushed.")
+
+
+
+    print("\n[Round1 Pipeline] Publishing to GitHub Pages")
+    enable_github_pages_api(repo_name, username, token)
+
+
+    print("\n[Round1 Pipeline] Posting results to evaluation URL")
+
+    commit_sha = (
+        subprocess.check_output(["git", "rev-parse", "HEAD"])
+        .decode("utf-8")
+        .strip()
+    )
 
     eval_payload = {
         "email": payload.email,
         "task": payload.task,
         "round": payload.round,
         "nonce": payload.nonce,
-        "repo_url": repo_info.get("repo_url", ""),
-        "commit_sha": repo_info.get("commit_sha", ""),
-        "pages_url": repo_info.get("pages_url", ""),
+    
+        "repo_url": f"https://github.com/{username}/{repo_name}",
+        "commit_sha": commit_sha,
+        "pages_url": f"https://{username}.github.io/{repo_name}/",
     }
 
-# POST 
-    print("[pipeline] posting evaluation payload:", eval_payload)
-    # result = post_evaluation_with_retries(str(payload.evaluation_url), eval_payload)
-    # print("[pipeline] evaluation post result:", result)
+    eval_url = "http://127.0.0.2:8000/eval"
+    # eval_url = payload.evaluation_url
+    
+    r = requests.post(eval_url, json=eval_payload)
 
-    try:
-        for p in saved_files:
-            os.unlink(p)
-    except Exception:
-        pass
 
-    print("[pipeline] finished for task:", payload.task)
+    print("Status Code:", r.status_code)
+    print("Response Text:\n", r.text)
+
+    text = post_evaluation_with_retries(eval_url,eval_payload)
+    print(text)
+
     return
-
-# ---- FastAPI endpoints ----
-
-@app.post("/api/submit", response_model=AckResponse)
-def submit(payload: RequestPayload):
-    print("Submit Called")
-
-    if payload.secret != EXPECTED_SECRET:
-        print("[Submit] Invalid Secret 401")
-        raise HTTPException(status_code=401, detail="invalid secret")
-
-    # Immediate ack response
-    ack = AckResponse(
-        task=payload.task,
-        round=payload.round,
-    )
-    print("[Submit] Repsonse 200")
-
-    pipeline(payload)
-
-    return ack
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-# ---- If run as main ----
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
-
-    # Send POst to eval url at end 
+    

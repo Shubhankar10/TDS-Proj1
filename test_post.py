@@ -1,47 +1,72 @@
-# test_client.py
+# # test_client.py
+# import requests
+# payload = {
+#     "email":"student@example.com",
+#     "secret":"Jo1010",
+#     "task":"TASK-006",
+#     "round":1,
+#     "nonce":"ab12-3456",
+#     "brief":"Create a captcha solver",
+#     "checks":["Repo has MIT license","README.md is professional"],
+#     "evaluation_url":"http://127.0.0.1:9000/notify",
+#     "attachments":[
+#     {"name":"sample.txt","url":"data:text/plain;base64,SGVsbG8h"},
+#     {"name":"input.md","url":"data:text/markdown;base64,IyBIZWxsbyBNSUQ="},
+#     {"name":"data.csv","url":"data:text/csv;base64,Y29sdW1uMSxjb2x1bW4yCjEsMg=="},
+#     {"name":"rates.json","url":"data:application/json;base64,eyJ0ZXN0IjogInZhbHVlIn0="}
+# ]
+
+# }
+
+
 import requests
-payload = {
-    "email":"student@example.com",
-    "secret":"Jo1010",
-    "task":"captcha-solver-001",
-    "round":1,
-    "nonce":"ab12-3456",
-    "brief":"Create a captcha solver",
-    "checks":["Repo has MIT license","README.md is professional"],
-    "evaluation_url":"http://127.0.0.1:9000/notify",
-    "attachments":[{"name":"sample.txt","url":"data:text/plain;base64,SGVsbG8h"}]
+import base64
+
+# Example Round 1 payload
+payload1 = {
+    "email": "student@example.com",
+    "secret": "Jo1010",
+    "task": "markdown-to-html",
+    "round": 1,
+    "nonce": "abcd1234",
+    "brief": "Publish a static page that converts input.md from attachments to HTML with marked, renders it inside #markdown-output, and loads highlight.js for code blocks.",
+    "checks": [
+        "js: !!document.querySelector(\"script[src*='marked']\")",
+        "js: !!document.querySelector(\"script[src*='highlight.js']\")",
+        "js: document.querySelector(\"#markdown-output\").innerHTML.includes(\"<h\")"
+    ],
+    "evaluation_url": "http://127.0.0.2:8000/api/evaluate",
+    "attachments": [
+        {"name": "input.md", "url": "data:text/markdown;base64," + base64.b64encode(b"# Hello Markdown").decode()}
+    ]
 }
 
-
-{
-#   // Student email ID
-  "email": "student@example.com",
-#   // Student-provided secret
-  "secret": "...",
-#   // A unique task ID.
-  "task": "captcha-solver-...",
-#   // There will be multiple rounds per task. This is the round index
-  "round": 1,
-#   // Pass this nonce back to the evaluation URL below
-  "nonce": "ab12-...",
-#   // brief: mentions what the app needs to do
-  "brief": "Create a captcha solver that handles ?url=https://.../image.png. Default to attached sample.",
-#   // checks: mention how it will be evaluated
-  "checks": [
-    "Repo has MIT license"
-    "README.md is professional",
-    "Page displays captcha URL passed at ?url=...",
-    "Page displays solved captcha text within 15 seconds",
-  ],
-#   // Send repo & commit details to the URL below
-  "evaluation_url": "https://example.com/notify",
-#   // Attachments will be encoded as data URIs
-  "attachments": [{ "name": "sample.png", "url": "data:image/png;base64,iVBORw..." }]
+# Example Round 2 payload
+payload2 = {
+    "email": "student@example.com",
+    "secret": "Jo1010",
+    "task": "markdown-to-html",
+    "round": 2,
+    "nonce": "abcd1234",
+    "brief": "Add tabs #markdown-tabs to switch between rendered HTML and original Markdown, and keep content in sync.",
+    "checks": [
+        "js: document.querySelectorAll(\"#markdown-tabs button\").length >= 2",
+        "js: document.querySelector(\"#markdown-source\").textContent.trim().length > 0"
+    ],
+    "evaluation_url": "http://127.0.0.2:8000/api/evaluate",
+    "attachments": [
+        {"name": "input.md", "url": "data:text/markdown;base64," + base64.b64encode(b"# Updated Markdown").decode()}
+    ]
 }
 
-r = requests.post("http://127.0.0.1:8000/api/submit", json=payload)
-print(r)
-print(r.status_code, r.json())
+url = "http://127.0.0.2:8000/api/submit"
 
+# Send Round 1
+r1 = requests.post(url, json=payload1)
+print("Round 1 Response:")
+print(r1.status_code, r1.json())
 
-# After local server run this to ping
+# Send Round 2
+r2 = requests.post(url, json=payload2)
+print("\nRound 2 Response:")
+print(r2.status_code, r2.json())

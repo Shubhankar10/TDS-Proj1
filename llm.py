@@ -3,8 +3,12 @@ from dotenv import load_dotenv
 load_dotenv()
 from openai import OpenAI\
 
-def initialize_llm_client(api_key: str = None):
-    return LLMClient(api_key=os.getenv("LLM_API_KEY"))
+llm_client = None
+
+def initialize_llm_client():
+    global llm_client
+    llm_client = LLMClient(api_key=os.getenv("LLM_API_KEY"))
+    print("[LLM] Client Initialized")
 
 class LLMClient:
     def __init__(self, base_url: str = "https://integrate.api.nvidia.com/v1",api_key: str = None):
@@ -49,10 +53,13 @@ class LLMClient:
 
 
 def ask_llm(query: str) -> str:
-    global llm_client
+    if llm_client is None:
+        print("[LLM] Initialized New Client")
+        initialize_llm_client()
+    print("[ASK LLM]")
     response = llm_client.query(query)
     return response
 
 
-llm_client = LLMClient(api_key=os.getenv("LLM_API_KEY"))
+# llm_client = LLMClient(api_key=os.getenv("LLM_API_KEY"))
 # print(ask_llm("Give pythoncode to return a strinf"))

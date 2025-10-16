@@ -160,8 +160,8 @@ def initialize_github(token, username):
 
 def create_repo(task_name):
     print("[Github : create repo]")
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    repo_name = f"{task_name}-{timestamp}"
+    # timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")  
+    repo_name = f"{task_name}-Shubhankar"
 
     try:
         # Create repo (authenticated via gh auth login)

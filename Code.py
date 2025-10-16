@@ -74,10 +74,6 @@ def extract_data_uri(data_uri: str) -> tuple[str, bytes]:
     return mime, data
 
 def save_attachments_to_repo(attachments: List) -> List[str]:
-    """
-    Save attachments (Attachment objects) inside the repo folder under 'attachments' subfolder.
-    Returns list of file paths relative to the repo.
-    """
     saved_paths = []
 
     attachments_dir = "attachments"
@@ -98,16 +94,6 @@ def save_attachments_to_repo(attachments: List) -> List[str]:
             f.write(data)
 
         saved_paths.append(file_path)
-
-        # Recursively save nested attachments if present
-        nested_attachments = getattr(att, "attachments", None)
-        if nested_attachments:
-            nested_paths = save_attachments_to_repo(
-                nested_attachments,
-                repo_name,
-                parent_folder=os.path.join(parent_folder, file_name + "_nested")
-            )
-            saved_paths.extend(nested_paths)
 
     print(f"[Attachments] Saved {len(saved_paths)} files in {attachments_dir}")
     return saved_paths

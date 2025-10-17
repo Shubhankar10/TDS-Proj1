@@ -136,10 +136,11 @@ def post_evaluation_with_retries(evaluation_url: str, payload: Dict[str, Any]) -
     attempt = 0
     base_delay = 1.0
     max_delay = 32.0
-
+    print("[POST]")
     with httpx.Client(timeout=30.0) as client:
         while True:
             attempt += 1
+            print(f"[POST] Attempt : {attempt}")
             try:
                 resp = client.post(
                     evaluation_url, json=payload, headers={"Content-Type": "application/json"}

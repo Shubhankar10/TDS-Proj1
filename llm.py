@@ -25,15 +25,20 @@ class LLMClient:
         print("[LLMClient] Client initialized successfully.")
 
 
-    def query(self, user_input: str, model: str = "deepseek-ai/deepseek-v3.1") -> str:
+    def query(self, user_input: str, model: str = "mistralai/mistral-7b-instruct-v0.2") -> str:
         # print(f"[LLMClient] Query started: '{user_input}'")
         print(f"[LLMClient] Query sent to model.")
         completion = self.client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": user_input}],
-            temperature=0.2,
-            top_p=0.7,
-            max_tokens=8192,
+            # "deepseek-ai/deepseek-v3.1"
+            # temperature=0.2,
+            # top_p=0.7,
+            # max_tokens=8192,
+            
+            temperature=0.5,
+            top_p=1,
+            max_tokens=1024,
             extra_body={"chat_template_kwargs": {"thinking": True}},
             stream=True
         )

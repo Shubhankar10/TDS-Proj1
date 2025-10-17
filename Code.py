@@ -21,6 +21,10 @@ import base64
 from typing import List
 import re
 
+import requests
+import base64
+from datetime import datetime
+
 from dotenv import load_dotenv  
 import os
 load_dotenv()
@@ -73,7 +77,7 @@ def extract_data_uri(data_uri: str) -> tuple[str, bytes]:
     data = base64.b64decode(encoded)
     return mime, data
 
-def save_attachments_to_repo(attachments: List) -> List[str]:
+# def save_attachments_to_repo(attachments: List) -> List[str]:
     saved_paths = []
 
     attachments_dir = "attachments"
@@ -97,6 +101,30 @@ def save_attachments_to_repo(attachments: List) -> List[str]:
 
     print(f"[Attachments] Saved {len(saved_paths)} files in {attachments_dir}")
     return saved_paths
+
+
+def prepare_attachments_for_push(attachments: List) -> dict:
+    """
+    Prepare attachments as a dictionary for push_code function.
+    Returns dict with file paths as keys and file contents as values.
+    """
+    files_dict = {}
+    
+    for att in attachments:
+        # Extract MIME and data
+        mime, data = extract_data_uri(att.url)
+
+        # Determine filename and extension
+        file_name = att.name
+        if "." not in file_name and "/" in mime:
+            file_name += "." + mime.split("/")[-1]
+
+        # Add to files dict with attachments/ prefix
+        file_path = f"attachments/{file_name}"
+        files_dict[file_path] = data
+
+    print(f"[Attachments] Prepared {len(files_dict)} files for push")
+    return files_dict
 
 def extract_html_block(code: str) -> str:
     match = re.search(r"(<html.*?>.*?</html>)", code, re.DOTALL | re.IGNORECASE)
@@ -255,114 +283,16 @@ def enable_github_pages_api(repo_name, username, token):
 
 
 
-# CHANGE 
-# GITHUB_API = "https://api.github.com"
-
-# def create_repo(task_name):
-#     print("[Github : create repo]")
-    
-#     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-#     repo_name = f"{task_name}-{timestamp}"
-
-#     url = f"{GITHUB_API}/user/repos"
-#     headers = {
-#         "Authorization": f"token {GITHUB_TOKEN}",
-#         "Accept": "application/vnd.github+json"
-#     }
-#     payload = {
-#         "name": repo_name,
-#         "private": False,
-#         "auto_init": True,  # Create with README
-#     }
-
-#     try:
-#         response = requests.post(url, json=payload, headers=headers)
-#         response.raise_for_status()  # Raises HTTPError if status >= 400
-
-#         print(f"[GITHUB : create repo] Repository '{repo_name}' created successfully.")
-#         return repo_name
-
-#     except requests.exceptions.HTTPError as e:
-#         print(f"[pipeline] repo creation failed: {e}, {response.text}")
-#         raise
-
-# HEADERS = {
-#     "Authorization": f"token {GITHUB_TOKEN}",
-#     "Accept": "application/vnd.github+json"
-# }
-
-# import requests
-
-# GITHUB_API = "https://api.github.com"
-
-# def setup_github_repo(repo_name, username, token):
-#     """
-#     Create a GitHub repository, add MIT license, and make initial commit
-#     using GitHub REST API. Suitable for serverless deployment.
-    
-#     Args:
-#         repo_name (str): Name of the repo to create
-#         username (str): GitHub username
-#         token (str): Personal Access Token with repo permissions
-#     """
-#     headers = {
-#         "Authorization": f"token {token}",
-#         "Accept": "application/vnd.github.v3+json"
-#     }
-
-#     # 1. Create repository
-#     print("[GitHub API] Creating repository...")
-#     repo_data = {"name": repo_name, "private": False, "auto_init": False}
-#     r = requests.post(f"{GITHUB_API}/user/repos", headers=headers, json=repo_data)
-#     r.raise_for_status()
-#     print("[GitHub API] Repository created.")
-
-#     # 2. Add MIT license via GitHub API (create a file)
-#     print("[GitHub API] Adding MIT LICENSE...")
-#     mit_license_text = """MIT License
-
-# Copyright (c) 2025
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction."""
-    
-#     create_file_data = {
-#         "message": "Initial commit with LICENSE",
-#         "content": mit_license_text.encode("utf-8").decode("utf-8").encode("base64").decode("utf-8"),
-#         "branch": "main"
-#     }
-
-#     # GitHub requires base64 content
-#     import base64
-#     create_file_data["content"] = base64.b64encode(mit_license_text.encode()).decode()
-
-#     r = requests.put(
-#         f"{GITHUB_API}/repos/{username}/{repo_name}/contents/LICENSE",
-#         headers=headers,
-#         json=create_file_data
-#     )
-#     r.raise_for_status()
-#     print("[GitHub API] LICENSE added and committed.")
-
-#     print("[GitHub API] Repository setup successfully.")
-
-
-
 # claude
 
-import requests
-import os
-from datetime import datetime
 
-def create_repo(task_name, github_token = GITHUB_TOKEN):
+def create_repo(task_name, github_token):
     print("[Github : create repo]")
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     print("[Test] Timestamp Issue")
     repo_name = f"{task_name}-{timestamp}"
 
     try:
-        # Create repo using GitHub REST API
         headers = {
             "Authorization": f"Bearer {github_token}",
             "Accept": "application/vnd.github+json",
@@ -391,10 +321,9 @@ def create_repo(task_name, github_token = GITHUB_TOKEN):
         raise
 
 
-def setup_local_repo(repo_name, username = GITHUB_USERNAME, github_token = GITHUB_TOKEN):
+def setup_local_repo(repo_name, username, github_token):
     print("[Github : local setup]")
     
-    # Get authenticated user info to ensure username is correct
     headers = {
         "Authorization": f"Bearer {github_token}",
         "Accept": "application/vnd.github+json",
@@ -412,8 +341,6 @@ Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction."""
 
-    # Create LICENSE file via API
-    import base64
     content_encoded = base64.b64encode(mit_license_text.encode()).decode()
     
     data = {
@@ -432,6 +359,128 @@ in the Software without restriction."""
     print("[GITHUB : local setup] MIT Added")
     print("[GITHUB : local setup] Setup successfully.")
 
+
+def push_code(repo_name, username, github_token, files_dict, commit_message="Add index.html and README for Round1"):
+    """
+    Push multiple files to GitHub repo in a single commit using Git Database API.
+    
+    Args:
+        repo_name: Name of the repository
+        username: GitHub username
+        github_token: GitHub personal access token
+        files_dict: Dictionary where keys are file paths and values are file contents (as strings or bytes)
+                   Example: {"index.html": "<html>...</html>", "README.md": "# Title"}
+        commit_message: Commit message
+    """
+    print("\n[Round1 Pipeline] Pushing code to GitHub")
+    
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+    
+    try:
+        # Get the current commit SHA of the main branch
+        ref_response = requests.get(
+            f"https://api.github.com/repos/{username}/{repo_name}/git/ref/heads/main",
+            headers=headers
+        )
+        ref_response.raise_for_status()
+        current_commit_sha = ref_response.json()["object"]["sha"]
+        
+        # Get the tree SHA of the current commit
+        commit_response = requests.get(
+            f"https://api.github.com/repos/{username}/{repo_name}/git/commits/{current_commit_sha}",
+            headers=headers
+        )
+        commit_response.raise_for_status()
+        base_tree_sha = commit_response.json()["tree"]["sha"]
+        
+        # Create blobs for all files
+        tree_items = []
+        for file_path, file_content in files_dict.items():
+            # Convert content to bytes if it's a string
+            if isinstance(file_content, str):
+                file_content = file_content.encode('utf-8')
+            
+            # Encode content to base64
+            content_base64 = base64.b64encode(file_content).decode()
+            
+            # Create blob
+            blob_data = {
+                "content": content_base64,
+                "encoding": "base64"
+            }
+            
+            blob_response = requests.post(
+                f"https://api.github.com/repos/{username}/{repo_name}/git/blobs",
+                headers=headers,
+                json=blob_data
+            )
+            blob_response.raise_for_status()
+            blob_sha = blob_response.json()["sha"]
+            
+            # Add to tree
+            tree_items.append({
+                "path": file_path,
+                "mode": "100644",
+                "type": "blob",
+                "sha": blob_sha
+            })
+        
+        # Create new tree
+        tree_data = {
+            "base_tree": base_tree_sha,
+            "tree": tree_items
+        }
+        
+        tree_response = requests.post(
+            f"https://api.github.com/repos/{username}/{repo_name}/git/trees",
+            headers=headers,
+            json=tree_data
+        )
+        tree_response.raise_for_status()
+        new_tree_sha = tree_response.json()["sha"]
+        
+        # Create new commit
+        commit_data = {
+            "message": commit_message,
+            "tree": new_tree_sha,
+            "parents": [current_commit_sha]
+        }
+        
+        new_commit_response = requests.post(
+            f"https://api.github.com/repos/{username}/{repo_name}/git/commits",
+            headers=headers,
+            json=commit_data
+        )
+        new_commit_response.raise_for_status()
+        new_commit_sha = new_commit_response.json()["sha"]
+        
+        # Update the reference
+        update_ref_data = {
+            "sha": new_commit_sha,
+            "force": False
+        }
+        
+        update_ref_response = requests.patch(
+            f"https://api.github.com/repos/{username}/{repo_name}/git/refs/heads/main",
+            headers=headers,
+            json=update_ref_data
+        )
+        update_ref_response.raise_for_status()
+        
+        print("\t[Round1] Code and Attachments Pushed.")
+        
+    except requests.exceptions.RequestException as e:
+        print(f"[pipeline] push code failed: {e}")
+        if hasattr(e.response, 'text'):
+            print(f"Response: {e.response.text}")
+        raise
+
+
+
 # ---- Pipeline Fucnitons ----
 
 
@@ -448,13 +497,18 @@ def round_1_pipeline(payload: RequestPayload):
 
     print("\n[Round1 Pipeline] Creating repository")
     # repo_name = "Talk"
-    repo_name = create_repo(payload.task)
+    repo_name = create_repo(payload.task,token)
 
     print("\n[Round1 Pipeline] Setup Local repository")
-    setup_local_repo(repo_name,username, token)
+    repo_folder = setup_local_repo(repo_name,username, token)
 
     print("\n[Round1 Pipeline] Downloading attachments")
-    attachments_paths = save_attachments_to_repo(payload.attachments)
+
+    files = {}
+
+    if payload.attachments:
+        attachment_files = prepare_attachments_for_push(payload.attachments)
+        files.update(attachment_files) 
 
     print("\n[Round1 Pipeline] Calling LLM to generate code with attachments")
 
@@ -468,7 +522,7 @@ def round_1_pipeline(payload: RequestPayload):
     - Do not include any introductory or trailing messages, explanations, or comments unrelated to the code.
     - Keep the code simple, readable, and self-contained.
     - Make sure to have these checks in the code : {payload.checks}
-    - Use the following attachments as needed, These are the paths to be used: {attachments_paths}.
+    - Use the following attachments as needed, These are the paths to be used: {attachment_files}.
     """
 
     code = ask_llm(prompt)
@@ -477,8 +531,10 @@ def round_1_pipeline(payload: RequestPayload):
     print("\t[Round1] Code Generated.")
 
     
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html_only)
+    # with open("index.html", "w", encoding="utf-8") as f:
+    #     f.write(html_only)
+    files["index.html"] = html_only
+
     print("\t[Round1] Code Added.")
 
 
@@ -497,8 +553,9 @@ def round_1_pipeline(payload: RequestPayload):
     # readme_text = ""
     print("\t[Round1]  README Generated")
     
-    with open("README.md", "w") as f:
-        f.write(readme_text)
+    # with open("README.md", "w") as f:
+    #     f.write(readme_text)
+    files["README.md"] = readme_text
 
     print("\t[Round1] README Added")
 
@@ -506,9 +563,14 @@ def round_1_pipeline(payload: RequestPayload):
     
 
     print("\n[Round1 Pipeline] Pushing code to GitHub")
-    subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Add index.html and README for Round1"], check=True)
-    subprocess.run(["git", "push", "origin", "main"], check=True)
+    # subprocess.run(["git", "add", "."], check=True)
+    # subprocess.run(["git", "commit", "-m", "Add index.html and README for Round1"], check=True)
+    # subprocess.run(["git", "push", "origin", "main"], check=True)
+
+    # Create files in memory (no file system needed)
+
+    push_code(repo_name, username, token, files, "Added index.html, README and attachments")
+        
     print("\t[Round1] Code and Attachments Pushed.")
 
 
@@ -519,12 +581,9 @@ def round_1_pipeline(payload: RequestPayload):
 
     print("\n[Round1 Pipeline] Posting results to evaluation URL")
 
-    commit_sha = (
-        subprocess.check_output(["git", "rev-parse", "HEAD"])
-        .decode("utf-8")
-        .strip()
-    )
+    commit_sha = requests.get(f"https://api.github.com/repos/{username}/{repo_name}/git/refs/heads/main", headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}).json()["object"]["sha"]
 
+    print(f"[Round 1] SHA : {commit_sha}")
     eval_payload = {
         "email": payload.email,
         "task": payload.task,
@@ -535,6 +594,7 @@ def round_1_pipeline(payload: RequestPayload):
         "commit_sha": commit_sha,
         "pages_url": f"https://{username}.github.io/{repo_name}/",
     }
+
 
     eval_url = "http://127.0.0.2:8000/eval"
     # eval_url = payload.evaluation_url

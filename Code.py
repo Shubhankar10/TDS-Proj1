@@ -577,7 +577,6 @@ def round_2_pipeline(payload : RequestPayload,round1_data: dict):
     text = post_evaluation_with_retries(eval_url,eval_payload)
     print(text)
 
-    print("[Round2] Done.")
     return
 
 

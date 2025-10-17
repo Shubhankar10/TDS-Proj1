@@ -58,6 +58,7 @@ def ask_llm(query: str) -> str:
         initialize_llm_client()
     print("[ASK LLM]")
     response = llm_client.query(query)
+    # response = "<html>Pass</html>"
     return response
 
 

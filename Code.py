@@ -567,7 +567,7 @@ def round_2_pipeline(payload : RequestPayload,round1_data: dict):
 
 
     # eval_url = "http://127.0.0.2:8000/eval"
-    eval_url = payload.evaluation_url
+    eval_url = str(payload.evaluation_url)
     
     # r = requests.post(eval_url, json=eval_payload)
 
@@ -697,7 +697,8 @@ def round_1_pipeline(payload: RequestPayload):
 
 
     # eval_url = "http://127.0.0.2:8000/eval"
-    eval_url = payload.evaluation_url
+    eval_url = str(payload.evaluation_url)
+
     
     # r = requests.post(eval_url, json=eval_payload)
 

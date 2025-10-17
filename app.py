@@ -92,13 +92,17 @@ async def submit(payload: RequestPayload, background_tasks: BackgroundTasks):
             print("[Round 1] Done.")
             task_state["round1_data"] = data
             task_state["round1_done"] = True
+            print(TASK_ROUNDS)
+            print(task_state)
 
         elif payload.round == 2:
             print("[Round 2 Pipeline]")
             # Wait until round1 is done
             while not task_state["round1_done"]:
                 print("Waiting for Round 1.")
+                print(task_state)
                 time.sleep(5)
+                
             print("Moving to Round 2")
             round_2_pipeline(payload, task_state["round1_data"])
             print("[Round 2] Done.")

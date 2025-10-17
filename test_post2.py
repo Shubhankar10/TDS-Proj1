@@ -1,6 +1,6 @@
 import requests
 import base64
-
+import time
 # # Example Round 1 payload
 # payload1 = {
 #     "email": "student@example.com",
@@ -89,6 +89,8 @@ url = "https://tds-proj1-v2.vercel.app/api/submit"
 r1 = requests.post(url, json=payload1)
 print("Round 1 Response:")
 print(r1.status_code)
+
+time.sleep(120)
 
 # Send Round 2
 r2 = requests.post(url, json=payload2)

@@ -528,6 +528,10 @@ def round_2_pipeline(payload : RequestPayload,round1_data: dict):
     """
     
     readme_text = ask_llm(prompt_round2_readme)
+    match = re.search(r'(^#.*?)(?=\n[^#]|$)', readme_text, re.DOTALL | re.MULTILINE)
+    if match:
+        readme_text = match.group(0)
+    
     # readme_text = ""
     print("\t[Round2]  README Generated")
     files["README.md"] = readme_text
@@ -641,6 +645,10 @@ def round_1_pipeline(payload: RequestPayload):
     """
     
     readme_text = ask_llm(readme_prompt)
+    match = re.search(r'(^#.*?)(?=\n[^#]|$)', readme_text, re.DOTALL | re.MULTILINE)
+    if match:
+        readme_text = match.group(0)
+    
     # readme_text = ""
     print("\t[Round1]  README Generated")
     

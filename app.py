@@ -86,6 +86,16 @@ async def submit(payload: RequestPayload, background_tasks: BackgroundTasks):
         initialize_llm_client()
         task_state = TASK_ROUNDS[payload.task]
 
+        task_state["round1_data"] = {
+            "repo_name": "No Name",
+            "files": "None",
+            "attachments": "None",
+            "commit_sha": "None",
+            "repo_url": "None",
+            "pages_url": "None",
+            "task": payload.task,
+        }
+            
         if payload.round == 1:
             print("[Round 1 Pipeline]")
             data = round_1_pipeline(payload)
@@ -98,11 +108,11 @@ async def submit(payload: RequestPayload, background_tasks: BackgroundTasks):
         elif payload.round == 2:
             print("[Round 2 Pipeline]")
             # Wait until round1 is done
-            while not task_state["round1_done"]:
-                print("Waiting for Round 1.")
-                print(task_state)
-                time.sleep(5)
-                
+            # while not task_state["round1_done"]:
+            #     print("Waiting for Round 1.")
+            #     print(task_state)
+            #     time.sleep(5)
+
             print("Moving to Round 2")
             round_2_pipeline(payload, task_state["round1_data"])
             print("[Round 2] Done.")

@@ -498,13 +498,15 @@ def round_2_pipeline(payload : RequestPayload,round1_data: dict):
 
     
     prompt_round2_code = f"""
-    You are an expert web developer. Using the task '{payload.task}' and brief '{payload.brief}', 
-    generate a **complete, standalone HTML page** that implements the updated functionality. 
+    You are an expert web developer. Using the task '{payload.task}' and brief '{payload.brief}', generate a **complete, standalone HTML page** that implements the functionality.
 
-    - Include all HTML, CSS, and JavaScript within <html>..</html>.
+    - Include all HTML, CSS, and JavaScript inside <html>...</html>.
     - Use attachments if needed: {attachments}.
-    - Ensure the code passes these checks: {payload.checks}. Do not add checks on HTML, just confirm them yourself.
-    - Keep it clean, simple, and fully self-contained.
+    - Ensure the page passes these checks: {payload.checks}.
+    - Keep the code clean, simple, fully self-contained.
+    - Do **not** add extra explanations or comments—return only the HTML.
+    - Respond **fast**; do not spend time on reasoning steps.
+
     """
     code = ask_llm(prompt_round2_code)
     html_only = extract_html_block(code)
@@ -524,7 +526,7 @@ def round_2_pipeline(payload : RequestPayload,round1_data: dict):
 
     - Include sections: summary, setup, usage, code explanation.
     - Do not include extra messages or unrelated comments.
-    - Generate a response fast and accurate.
+    - Respond **fast**; do not spend time on reasoning steps.
     - Reference the new code generated for Round 2 : {html_only}.
     """
     

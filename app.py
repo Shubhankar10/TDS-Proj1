@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from llm import initialize_llm_client
 from Code import AckResponse, RequestPayload, EvalPayload, round_1_pipeline,round_2_pipeline
+from fastapi import BackgroundTasks
 
 
 EXPECTED_SECRET = "Jo1010"
@@ -26,18 +27,41 @@ def say_hello():
     print("GET /hello called")
     return {"greet": "Hi there!"}
 
-# --- POST route ---
-@app.post("/submit")
-async def submit_item(item: Item, request: Request):
-    print(f"POST /submit called with data: {item.dict()}")
-    return {"status": "received", "data": item.dict()}
 
-# Run with:  uvicorn main:app --reload
+# @app.post("/api/submit", response_model=AckResponse)
+# def submit(payload: RequestPayload):
+#     print("[Submit]")
 
+#     if payload.secret != EXPECTED_SECRET:
+#         print("[Submit] Invalid Secret 401")
+#         raise HTTPException(status_code=401, detail="invalid secret")
+
+#     # Immediate ack response
+#     ack = AckResponse(
+#         task=payload.task,
+#         round=payload.round,
+#     )
+#     print("[Submit] Repsonse 200")
+
+#     #Send ACK rest only pipeline code in background
+
+
+#     print("[Submit] Initializing LLM")
+#     initialize_llm_client()
+
+#     if payload.round == 1:
+#         print("[APP TO CODE : Round 1]")
+#         round_1_pipeline(payload)
+#     else:
+#         print("[APP TO CODE : Round 1]")
+#         round_2_pipeline(payload)
+#     #Send to Eval
+
+#     return ack
 
 
 @app.post("/api/submit", response_model=AckResponse)
-def submit(payload: RequestPayload):
+async def submit(payload: RequestPayload, background_tasks: BackgroundTasks):
     print("[Submit]")
 
     if payload.secret != EXPECTED_SECRET:
@@ -49,23 +73,23 @@ def submit(payload: RequestPayload):
         task=payload.task,
         round=payload.round,
     )
-    print("[Submit] Repsonse 200")
+    print("[Submit] Response 200")
 
-    #Send ACK rest only pipeline code in background
+    # Schedule pipeline to run in the background
+    def run_pipeline(payload):
+        print("[Submit] Initializing LLM")
+        initialize_llm_client()
+        if payload.round == 1:
+            print("[APP TO CODE : Round 1]")
+            round_1_pipeline(payload)
+        else:
+            print("[APP TO CODE : Round 2]")
+            round_2_pipeline(payload)
 
-
-    print("[Submit] Initializing LLM")
-    initialize_llm_client()
-
-    if payload.round == 1:
-        print("[APP TO CODE : Round 1]")
-        round_1_pipeline(payload)
-    else:
-        print("[APP TO CODE : Round 1]")
-        round_2_pipeline(payload)
-    #Send to Eval
+    background_tasks.add_task(run_pipeline, payload)
 
     return ack
+
 
 @app.post("/eval", response_class=HTMLResponse)
 async def eval_endpoint(payload: EvalPayload):

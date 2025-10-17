@@ -539,14 +539,14 @@ def round_1_pipeline(payload: RequestPayload):
     eval_url = "http://127.0.0.2:8000/eval"
     # eval_url = payload.evaluation_url
     
-    r = requests.post(eval_url, json=eval_payload)
+    # r = requests.post(eval_url, json=eval_payload)
 
 
-    print("Status Code:", r.status_code)
-    print("Response Text:\n", r.text)
+    # print("Status Code:", r.status_code)
+    # print("Response Text:\n", r.text)
 
-    text = post_evaluation_with_retries(eval_url,eval_payload)
-    print(text)
+    # text = post_evaluation_with_retries(eval_url,eval_payload)
+    # print(text)
 
     return
     

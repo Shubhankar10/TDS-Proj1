@@ -50,6 +50,7 @@ print(r1.status_code)
 # print("Response:", r1.json())
 
 # Send Round 2
-# r2 = requests.post(url, json=payload2)
-# print("\nRound 2 Response:")
+r2 = requests.post(url, json=payload2)
+print("\nRound 2 Response:")
+print(r2.status_code)
 # print(r2.status_code, r2.json())

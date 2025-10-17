@@ -19,6 +19,8 @@ payload = {
 }
 
 
+
+
 # {
 # #   // Student email ID
 #   "email": "student@example.com",
@@ -46,8 +48,8 @@ payload = {
 # }
 
 
-url = "http://127.0.0.2:8000/api/submit"
-# url = "https://tds-proj1-v2.vercel.app/api/submit"
+# url = "http://127.0.0.2:8000/api/submit"
+url = "https://tds-proj1-v2.vercel.app/api/submit"
 
 r = requests.post(url, json=payload)
 print(r)

@@ -30,7 +30,6 @@ import os
 load_dotenv()
 
 # ---- CONFIG ----
-EXPECTED_SECRET = "Jo1010"
 EVAL_POST_TIMEOUT_SECONDS = 10 * 60 
 GITHUB_USERNAME = os.getenv("GITHUB_USERNAME")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -275,7 +274,7 @@ def enable_github_pages_api(repo_name, username, token):
 
     # Wait a few seconds for the site to be deployed
     print("[GITHUB] Wait to Publish.")
-    time.sleep(10)
+    time.sleep(60)
     page_url = f"https://{username}.github.io/{repo_name}/"
     print(f"[GITHUB] Check your site at: {page_url}")
 
@@ -484,10 +483,100 @@ def push_code(repo_name, username, github_token, files_dict, commit_message="Add
 # ---- Pipeline Fucnitons ----
 
 
+def round_2_pipeline(payload : RequestPayload,round1_data: dict):
+    print("\n [Round 2]")
+    repo_name = round1_data["repo_name"]
+    files = round1_data["files"]
+    attachments = round1_data["attachments"]
+    commit_sha = round1_data["commit_sha"]
+    repo_url = round1_data["repo_url"]
+    pages_url = round1_data["pages_url"]
+    round1_task = round1_data["task"]
+    token = GITHUB_TOKEN
+    username = GITHUB_USERNAME
 
-def round_2_pipeline(payload: RequestPayload):
-    print("Hi")
+    
+    prompt_round2_code = f"""
+    You are an expert web developer. Using the task '{payload.task}' and brief '{payload.brief}', 
+    generate a **complete, standalone HTML page** that implements the updated functionality. 
+
+    - Include all HTML, CSS, and JavaScript within <html>..</html>.
+    - Use attachments if needed: {attachments}.
+    - Ensure the code passes these checks: {payload.checks}. Do not add checks on HTML, just confirm them yourself.
+    - Keep it clean, simple, and fully self-contained.
+    """
+    code = ask_llm(prompt_round2_code)
+    html_only = extract_html_block(code)
+    # html_only = " "
+    print("\t[Round2] Code Generated.")
+    files["index.html"] = html_only
+
+    print("\t[Round2] Code Added.")
+
+
+
+    
+    # Prompt for generating updated README.md for Round 2
+    prompt_round2_readme = f"""
+    You are a README generator for GitHub. Based on task '{payload.task}' and brief '{payload.brief}', 
+    write a **complete README.md** that replaces the Round 1 README entirely. 
+
+    - Include sections: summary, setup, usage, code explanation.
+    - Do not include extra messages or unrelated comments.
+    - Reference the new code generated for Round 2 : {html_only}.
+    """
+    
+    readme_text = ask_llm(prompt_round2_readme)
+    # readme_text = ""
+    print("\t[Round2]  README Generated")
+    files["README.md"] = readme_text
+
+    print("\t[Round2] README Added")
+
+
+    
+
+    print("\n[Round2 Pipeline] Pushing code to GitHub")
+    push_code(repo_name, username, token, files, "Round 2 : Added index.html, README and attachments")
+        
+    print("\t[Round2] Code and Attachments Pushed.")
+
+
+
+    # POST 
+    
+    commit_sha2 = requests.get(f"https://api.github.com/repos/{username}/{repo_name}/git/refs/heads/main", headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}).json()["object"]["sha"]
+
+    
+    eval_payload = {
+        "email": payload.email,
+        "task": payload.task,
+        "round": payload.round,
+        "nonce": payload.nonce,
+    
+        "repo_url": repo_url,
+        "commit_sha": commit_sha2,
+        "pages_url": pages_url,
+    }
+
+
+    # eval_url = "http://127.0.0.2:8000/eval"
+    eval_url = payload.evaluation_url
+    
+    # r = requests.post(eval_url, json=eval_payload)
+
+
+    # print("Status Code:", r.status_code)
+    # print("Response Text:\n", r.text)
+
+    text = post_evaluation_with_retries(eval_url,eval_payload)
+    print(text)
+
+    print("[Round2] Done.")
     return
+
+
+
 
 def round_1_pipeline(payload: RequestPayload):
     print("\n[Round1 Pipeline] Initializing GitHub")
@@ -500,7 +589,7 @@ def round_1_pipeline(payload: RequestPayload):
     repo_name = create_repo(payload.task,token)
 
     print("\n[Round1 Pipeline] Setup Local repository")
-    repo_folder = setup_local_repo(repo_name,username, token)
+    setup_local_repo(repo_name,username, token)
 
     print("\n[Round1 Pipeline] Downloading attachments")
 
@@ -596,8 +685,8 @@ def round_1_pipeline(payload: RequestPayload):
     }
 
 
-    eval_url = "http://127.0.0.2:8000/eval"
-    # eval_url = payload.evaluation_url
+    # eval_url = "http://127.0.0.2:8000/eval"
+    eval_url = payload.evaluation_url
     
     # r = requests.post(eval_url, json=eval_payload)
 
@@ -605,8 +694,18 @@ def round_1_pipeline(payload: RequestPayload):
     # print("Status Code:", r.status_code)
     # print("Response Text:\n", r.text)
 
-    # text = post_evaluation_with_retries(eval_url,eval_payload)
-    # print(text)
+    text = post_evaluation_with_retries(eval_url,eval_payload)
+    print(text)
 
-    return
+    # At the end of round_1_pipeline:
+    return {
+        "repo_name": repo_name,
+        "files": files,
+        "attachments": attachment_files if payload.attachments else {},
+        "commit_sha": commit_sha,
+        "repo_url": f"https://github.com/{username}/{repo_name}",
+        "pages_url": f"https://{username}.github.io/{repo_name}/",
+        "task": payload.task,
+    }
+
     

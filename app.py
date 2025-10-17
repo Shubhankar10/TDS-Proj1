@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from llm import initialize_llm_client
 from Code import AckResponse, RequestPayload, EvalPayload, round_1_pipeline,round_2_pipeline
 from fastapi import BackgroundTasks
-
+import time
 
 EXPECTED_SECRET = "Jo1010"
 
@@ -60,6 +60,8 @@ def say_hello():
 #     return ack
 
 
+TASK_ROUNDS = {}  # key: task, value: dict with round1_data and completion flag
+
 @app.post("/api/submit", response_model=AckResponse)
 async def submit(payload: RequestPayload, background_tasks: BackgroundTasks):
     print("[Submit]")
@@ -67,6 +69,9 @@ async def submit(payload: RequestPayload, background_tasks: BackgroundTasks):
     if payload.secret != EXPECTED_SECRET:
         print("[Submit] Invalid Secret 401")
         raise HTTPException(status_code=401, detail="invalid secret")
+    
+    if payload.task not in TASK_ROUNDS:
+        TASK_ROUNDS[payload.task] = {"round1_done": False, "round1_data": None}
 
     # Immediate ack response
     ack = AckResponse(
@@ -76,19 +81,29 @@ async def submit(payload: RequestPayload, background_tasks: BackgroundTasks):
     print("[Submit] Response 200")
 
     # Schedule pipeline to run in the background
+
     def run_pipeline(payload):
-        print("[Submit] Initializing LLM")
         initialize_llm_client()
+        task_state = TASK_ROUNDS[payload.task]
+
         if payload.round == 1:
-            print("[APP TO CODE : Round 1]")
-            round_1_pipeline(payload)
-        else:
-            print("[APP TO CODE : Round 2]")
-            round_2_pipeline(payload)
+            print("[Round 1 Pipeline]")
+            data = round_1_pipeline(payload)
+            task_state["round1_data"] = data
+            task_state["round1_done"] = True
+
+        elif payload.round == 2:
+            print("[Round 2 Pipeline]")
+            # Wait until round1 is done
+            while not task_state["round1_done"]:
+                time.sleep(2)
+            print(" Round 1 DONE : Moving to Round 2")
+            round_2_pipeline(payload, task_state["round1_data"])
 
     background_tasks.add_task(run_pipeline, payload)
 
     return ack
+
 
 
 @app.post("/eval", response_class=HTMLResponse)
@@ -97,7 +112,7 @@ async def eval_endpoint(payload: EvalPayload):
     payload_dict = payload.dict()
     
     # Print to console
-    print("Received payload:", payload_dict)
+    print("Received payload")
     
     # Return formatted HTML response
     html_content = "<h2>Received JSON Payload:</h2><pre>{}</pre>".format(payload_dict)

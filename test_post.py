@@ -3,7 +3,7 @@ import requests
 payload = {
     "email":"student@example.com",
     "secret":"Jo1010",
-    "task":"TASK-006",
+    "task":"Repo-API",
     "round":1,
     "nonce":"ab12-3456",
     "brief":"Create a captcha solver",
@@ -46,8 +46,8 @@ payload = {
 # }
 
 
-# url = "http://127.0.0.2:8000/api/submit"
-url = "https://tds-proj1-llm-api.vercel.app/api/submit"
+url = "http://127.0.0.2:8000/api/submit"
+# url = "https://tds-proj1-llm-api.vercel.app/api/submit"
 
 r = requests.post(url, json=payload)
 print(r)

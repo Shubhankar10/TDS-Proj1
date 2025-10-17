@@ -158,56 +158,59 @@ def initialize_github(token, username):
     # subprocess.run(["gh", "auth", "login", "--with-token"], input=f"{token}\n", text=True, check=True)
     print("[GITHUB : init] GitHub CLI authenticated successfully.")
 
-def create_repo(task_name):
-    print("[Github : create repo]")
-    # timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")  
-    repo_name = f"{task_name}-Shubhankar"
+# def create_repo(task_name):
+#     print("[Github : create repo]")
+#     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+#     print("[Test] Timestamp Issue")
+#     repo_name = f"{task_name}-{timestamp}"
 
-    try:
-        # Create repo (authenticated via gh auth login)
-        subprocess.run(
-            ["gh", "repo", "create", repo_name, "--public", "--confirm"],
-            check=True
-        )
+#     try:
+#         # Create repo (authenticated via gh auth login)
+#         subprocess.run(
+#             ["gh", "repo", "create", repo_name, "--public", "--confirm"],
+#             check=True
+#         )
+#         print("[Test] Suprocess Issue")
 
-        print(f"[GITHUB : create repo] Repository '{repo_name}' created successfully.")
-        return repo_name
+#         print(f"[GITHUB : create repo] Repository '{repo_name}' created successfully.")
+#         return repo_name
 
-    except subprocess.CalledProcessError as e:
-        print(f"[pipeline] repo creation failed: {e}")
-        raise
+#     except subprocess.CalledProcessError as e:
+#         print(f"[pipeline] repo creation failed: {e}")
+#         raise
 
-def setup_local_repo(repo_name, username,code=""):
-    print("[Github : local setup]")
-    os.makedirs(repo_name, exist_ok=True)
-    os.chdir(repo_name)
-    print("[GITHUB : local setup] Repo Local Made")
+
+# def setup_local_repo(repo_name, username):
+#     print("[Github : local setup]")
+#     os.makedirs(repo_name, exist_ok=True)
+#     os.chdir(repo_name)
+#     print("[GITHUB : local setup] Repo Local Made")
     
-    # Initialize git
-    subprocess.run(["git", "init"], check=True)
+#     # Initialize git
+#     subprocess.run(["git", "init"], check=True)
     
-    # Add MIT LICENSE
-    mit_license_text = """MIT License
+#     # Add MIT LICENSE
+#     mit_license_text = """MIT License
 
-    Copyright (c) 2025
+#     Copyright (c) 2025
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction."""
+#     Permission is hereby granted, free of charge, to any person obtaining a copy
+#     of this software and associated documentation files (the "Software"), to deal
+#     in the Software without restriction."""
 
-    with open("LICENSE", "w") as f:
-        f.write(mit_license_text)
+#     with open("LICENSE", "w") as f:
+#         f.write(mit_license_text)
     
     
-    print("[GITHUB : local setup] MIT Added")
+#     print("[GITHUB : local setup] MIT Added")
     
-    # Commit and push
-    subprocess.run(["git", "add", "."], check=True)
-    subprocess.run(["git", "commit", "-m", "Initial commit with LICENSE"], check=True)
-    subprocess.run(["git", "branch", "-M", "main"], check=True)
-    subprocess.run(["git", "remote", "add", "origin", f"https://github.com/{username}/{repo_name}.git"], check=True)
-    subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
-    print("[GITHUB : local setup] Setup successfully.")
+#     # Commit and push
+#     subprocess.run(["git", "add", "."], check=True)
+#     subprocess.run(["git", "commit", "-m", "Initial commit with LICENSE"], check=True)
+#     subprocess.run(["git", "branch", "-M", "main"], check=True)
+#     subprocess.run(["git", "remote", "add", "origin", f"https://github.com/{username}/{repo_name}.git"], check=True)
+#     subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
+#     print("[GITHUB : local setup] Setup successfully.")
 
 def enable_github_pages_api(repo_name, username, token):
     import requests
@@ -251,6 +254,184 @@ def enable_github_pages_api(repo_name, username, token):
     return 
 
 
+
+# CHANGE 
+# GITHUB_API = "https://api.github.com"
+
+# def create_repo(task_name):
+#     print("[Github : create repo]")
+    
+#     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+#     repo_name = f"{task_name}-{timestamp}"
+
+#     url = f"{GITHUB_API}/user/repos"
+#     headers = {
+#         "Authorization": f"token {GITHUB_TOKEN}",
+#         "Accept": "application/vnd.github+json"
+#     }
+#     payload = {
+#         "name": repo_name,
+#         "private": False,
+#         "auto_init": True,  # Create with README
+#     }
+
+#     try:
+#         response = requests.post(url, json=payload, headers=headers)
+#         response.raise_for_status()  # Raises HTTPError if status >= 400
+
+#         print(f"[GITHUB : create repo] Repository '{repo_name}' created successfully.")
+#         return repo_name
+
+#     except requests.exceptions.HTTPError as e:
+#         print(f"[pipeline] repo creation failed: {e}, {response.text}")
+#         raise
+
+# HEADERS = {
+#     "Authorization": f"token {GITHUB_TOKEN}",
+#     "Accept": "application/vnd.github+json"
+# }
+
+# import requests
+
+# GITHUB_API = "https://api.github.com"
+
+# def setup_github_repo(repo_name, username, token):
+#     """
+#     Create a GitHub repository, add MIT license, and make initial commit
+#     using GitHub REST API. Suitable for serverless deployment.
+    
+#     Args:
+#         repo_name (str): Name of the repo to create
+#         username (str): GitHub username
+#         token (str): Personal Access Token with repo permissions
+#     """
+#     headers = {
+#         "Authorization": f"token {token}",
+#         "Accept": "application/vnd.github.v3+json"
+#     }
+
+#     # 1. Create repository
+#     print("[GitHub API] Creating repository...")
+#     repo_data = {"name": repo_name, "private": False, "auto_init": False}
+#     r = requests.post(f"{GITHUB_API}/user/repos", headers=headers, json=repo_data)
+#     r.raise_for_status()
+#     print("[GitHub API] Repository created.")
+
+#     # 2. Add MIT license via GitHub API (create a file)
+#     print("[GitHub API] Adding MIT LICENSE...")
+#     mit_license_text = """MIT License
+
+# Copyright (c) 2025
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction."""
+    
+#     create_file_data = {
+#         "message": "Initial commit with LICENSE",
+#         "content": mit_license_text.encode("utf-8").decode("utf-8").encode("base64").decode("utf-8"),
+#         "branch": "main"
+#     }
+
+#     # GitHub requires base64 content
+#     import base64
+#     create_file_data["content"] = base64.b64encode(mit_license_text.encode()).decode()
+
+#     r = requests.put(
+#         f"{GITHUB_API}/repos/{username}/{repo_name}/contents/LICENSE",
+#         headers=headers,
+#         json=create_file_data
+#     )
+#     r.raise_for_status()
+#     print("[GitHub API] LICENSE added and committed.")
+
+#     print("[GitHub API] Repository setup successfully.")
+
+
+
+# claude
+
+import requests
+import os
+from datetime import datetime
+
+def create_repo(task_name, github_token = GITHUB_TOKEN):
+    print("[Github : create repo]")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    print("[Test] Timestamp Issue")
+    repo_name = f"{task_name}-{timestamp}"
+
+    try:
+        # Create repo using GitHub REST API
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+        
+        data = {
+            "name": repo_name,
+            "private": False,
+            "auto_init": False
+        }
+        
+        response = requests.post(
+            "https://api.github.com/user/repos",
+            headers=headers,
+            json=data
+        )
+        response.raise_for_status()
+        
+        print("[Test] Suprocess Issue")
+        print(f"[GITHUB : create repo] Repository '{repo_name}' created successfully.")
+        return repo_name
+
+    except requests.exceptions.RequestException as e:
+        print(f"[pipeline] repo creation failed: {e}")
+        raise
+
+
+def setup_local_repo(repo_name, username = GITHUB_USERNAME, github_token = GITHUB_TOKEN):
+    print("[Github : local setup]")
+    
+    # Get authenticated user info to ensure username is correct
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+    
+    print("[GITHUB : local setup] Repo Local Made")
+    
+    # Add MIT LICENSE via API
+    mit_license_text = """MIT License
+
+Copyright (c) 2025
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction."""
+
+    # Create LICENSE file via API
+    import base64
+    content_encoded = base64.b64encode(mit_license_text.encode()).decode()
+    
+    data = {
+        "message": "Initial commit with LICENSE",
+        "content": content_encoded,
+        "branch": "main"
+    }
+    
+    response = requests.put(
+        f"https://api.github.com/repos/{username}/{repo_name}/contents/LICENSE",
+        headers=headers,
+        json=data
+    )
+    response.raise_for_status()
+    
+    print("[GITHUB : local setup] MIT Added")
+    print("[GITHUB : local setup] Setup successfully.")
+
 # ---- Pipeline Fucnitons ----
 
 
@@ -270,7 +451,7 @@ def round_1_pipeline(payload: RequestPayload):
     repo_name = create_repo(payload.task)
 
     print("\n[Round1 Pipeline] Setup Local repository")
-    setup_local_repo(repo_name, username, code="")
+    setup_local_repo(repo_name,username, token)
 
     print("\n[Round1 Pipeline] Downloading attachments")
     attachments_paths = save_attachments_to_repo(payload.attachments)

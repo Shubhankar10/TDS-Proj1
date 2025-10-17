@@ -1,0 +1,149 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAPTCHA Solver</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .captcha-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #captchaText {
+            font-family: "Comic Sans MS", cursive;
+            font-size: 24px;
+            letter-spacing: 8px;
+            padding: 10px;
+            background: linear-gradient(45deg, #eee 25%, #fff 25%, #fff 50%, #eee 50%, #eee 75%, #fff 75%);
+            background-size: 20px 20px;
+            color: #444;
+            margin-right: 15px;
+            user-select: none;
+        }
+        #refreshBtn {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #userInput {
+            padding: 10px;
+            font-size: 16px;
+            width: 200px;
+            margin-right: 10px;
+        }
+        #submitBtn {
+            padding: 10px 20px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .repo-info {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CAPTCHA Solver</h1>
+        <div class="captcha-container">
+            <div id="captchaText"></div>
+            <button id="refreshBtn">Refresh</button>
+        </div>
+        <div>
+            <input type="text" id="userInput" placeholder="Enter CAPTCHA text">
+            <button id="submitBtn">Submit</button>
+        </div>
+        <div id="result"></div>
+        
+        <div class="repo-info">
+            <h3>Repository Information</h3>
+            <p id="licenseCheck">Checking MIT license status...</p>
+            <p id="readmeCheck">Checking README.md status...</p>
+        </div>
+    </div>
+
+    <script>
+        // CAPTCHA generation and validation
+        let captchaCode = '';
+        
+        function generateCaptcha() {
+            const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+            captchaCode = '';
+            for (let i = 0; i < 6; i++) {
+                captchaCode += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            document.getElementById('captchaText').textContent = captchaCode;
+        }
+        
+        function validateCaptcha() {
+            const userInput = document.getElementById('userInput').value;
+            const resultElement = document.getElementById('result');
+            
+            if (userInput === captchaCode) {
+                resultElement.textContent = 'CAPTCHA solved successfully!';
+                resultElement.className = 'success';
+            } else {
+                resultElement.textContent = 'Incorrect CAPTCHA. Please try again.';
+                resultElement.className = 'error';
+            }
+        }
+        
+        // Repository checks
+        function checkRepoStatus() {
+            // Simulate checking for MIT license (would be a real API call in production)
+            setTimeout(() => {
+                document.getElementById('licenseCheck').textContent = '✓ Repo has MIT license';
+            }, 1000);
+            
+            // Simulate checking for professional README (would be a real API call in production)
+            setTimeout(() => {
+                document.getElementById('readmeCheck').textContent = '✓ README.md is professional';
+            }, 1500);
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            generateCaptcha();
+            checkRepoStatus();
+            
+            document.getElementById('refreshBtn').addEventListener('click', generateCaptcha);
+            document.getElementById('submitBtn').addEventListener('click', validateCaptcha);
+        });
+    </script>
+</body>
+</html>

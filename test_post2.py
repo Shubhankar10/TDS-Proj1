@@ -40,8 +40,8 @@ payload2 = {
     ]
 }
 
-# url = "http://127.0.0.2:8000/api/submit"
-url = "https://tds-proj1-llm-api.vercel.app/api/submit"
+url = "http://127.0.0.2:8000/api/submit"
+# url = "https://tds-proj1-llm-api.vercel.app/api/submit"
 
 # Send Round 1
 r1 = requests.post(url, json=payload1)

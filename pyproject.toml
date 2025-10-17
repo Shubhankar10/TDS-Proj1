@@ -1,7 +1,21 @@
 [project]
-requires-python = ">=3.11,<3.12"
+name = "tds_proj1"
+version = "0.1.0"
+description = "FastAPI project for deployment"
+authors = [
+    { name="Shubhankar", email="shubhankartiwary@bitdurg.ac.in" }
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "httpx",
+    "requests",
+    "python-dotenv",
+    "openai",
+    "PyGithub"
+]
 
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
-

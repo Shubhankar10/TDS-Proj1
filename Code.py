@@ -274,7 +274,7 @@ def enable_github_pages_api(repo_name, username, token):
 
     # Wait a few seconds for the site to be deployed
     print("[GITHUB] Wait to Publish.")
-    time.sleep(60)
+    time.sleep(10)
     page_url = f"https://{username}.github.io/{repo_name}/"
     print(f"[GITHUB] Check your site at: {page_url}")
 
@@ -523,6 +523,7 @@ def round_2_pipeline(payload : RequestPayload,round1_data: dict):
 
     - Include sections: summary, setup, usage, code explanation.
     - Do not include extra messages or unrelated comments.
+    - Generate a response fast and accurate.
     - Reference the new code generated for Round 2 : {html_only}.
     """
     
@@ -636,6 +637,7 @@ def round_1_pipeline(payload: RequestPayload):
 
     - Do not include any introductory or trailing messages, explanations, or comments unrelated to the file.
     - Write a complete README.md under these headings : summary, setup, usage, code explanation.
+    - Generate a response fast and accurate
     """
     
     readme_text = ask_llm(readme_prompt)
@@ -669,6 +671,7 @@ def round_1_pipeline(payload: RequestPayload):
 
 
     print("\n[Round1 Pipeline] Posting results to evaluation URL")
+    time.sleep(10)
 
     commit_sha = requests.get(f"https://api.github.com/repos/{username}/{repo_name}/git/refs/heads/main", headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}).json()["object"]["sha"]
 
